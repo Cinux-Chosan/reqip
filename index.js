@@ -47,10 +47,12 @@ exports.__esModule = true;
 var os = require("os");
 var http = require("http");
 var requestIp = require("request-ip");
+var qrcode = require("qrcode-terminal");
 var publicIp = require("public-ip");
 var ora = require("ora");
 var Table = require("cli-table");
 var yargs = require("yargs/yargs");
+var listenUrl = "";
 var argv = yargs(process.argv.slice(2))
     .options({
     p: {
@@ -78,7 +80,7 @@ var argv = yargs(process.argv.slice(2))
     }
 })
     .argv;
-// console.log(argv);
+var port = argv.port;
 (function () { return __awaiter(void 0, void 0, void 0, function () {
     function loopObj(o, callback) {
         for (var _i = 0, _a = Object.entries(o); _i < _a.length; _i++) {
@@ -105,7 +107,11 @@ var argv = yargs(process.argv.slice(2))
                 niNames.sort().forEach(function (niName) {
                     var ni = niList[niName];
                     ni.forEach(function (info) {
+                        var family = info.family, internal = info.internal, address = info.address;
                         var row = __spreadArrays([niName], propList.map(function (prop) { return info[prop] || ''; }));
+                        if (family === 'IPv4' && !internal) {
+                            listenUrl = "http://" + address + ":" + port;
+                        }
                         table.push(row);
                     });
                 });
@@ -136,7 +142,13 @@ var argv = yargs(process.argv.slice(2))
                 server.on('clientError', function (err, socket) {
                     socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
                 });
-                server.listen(argv.port, function () { return console.log("listen on port " + argv.port); });
+                server.listen(port, function () {
+                    console.log("listen on port " + port);
+                    if (listenUrl) {
+                        qrcode.generate(listenUrl);
+                        console.log("scan qrcode to visit " + listenUrl);
+                    }
+                });
                 return [2 /*return*/];
         }
     });

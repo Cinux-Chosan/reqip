@@ -2,10 +2,13 @@
 import * as os from 'os';
 import * as http from 'http';
 import * as requestIp from 'request-ip';
+import * as qrcode from 'qrcode-terminal';
 import publicIp = require( 'public-ip');
 import ora = require('ora');
 import Table =require('cli-table');
 import yargs = require('yargs/yargs');
+
+let listenUrl = "";
 
 const argv = yargs(process.argv.slice(2))
     .options({
@@ -35,7 +38,7 @@ const argv = yargs(process.argv.slice(2))
     })
     .argv;
 
-// console.log(argv);
+const { port } = argv;
 
 (async () => {
 
@@ -57,7 +60,11 @@ const argv = yargs(process.argv.slice(2))
     niNames.sort().forEach(niName => {
         const ni = niList[niName];
         ni.forEach(info => {
+            const { family, internal, address } = info;
             const row = [niName, ...propList.map(prop => info[prop] || '') ];
+            if (family === 'IPv4' && !internal) {
+                listenUrl = `http://${address}:${port}`;
+            }
             table.push(row);
         })
     })
@@ -86,7 +93,13 @@ const argv = yargs(process.argv.slice(2))
         socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
     });
 
-    server.listen(argv.port, () => console.log(`listen on port ${argv.port}`));
+    server.listen(port, () => {
+        console.log(`listen on port ${port}`);
+        if (listenUrl) {
+            qrcode.generate(listenUrl);
+            console.log(`scan qrcode to visit ${listenUrl}`)
+        }
+    });
 
     function loopObj(o: any, callback: (k:string, v:any) => void) {
         for (const [ k, v ] of Object.entries(o)) {
